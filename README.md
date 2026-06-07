@@ -8,8 +8,17 @@ A static HTML file can create an Apple Calendar file, but it usually cannot fetc
 
 ## Run it
 
+Clone the repo:
+
 ```bash
-node server.js
+git clone https://github.com/Jiayi459/race-calendar-importer.git
+cd race-calendar-importer
+```
+
+Start the local server:
+
+```bash
+npm start
 ```
 
 Then open:
@@ -17,6 +26,8 @@ Then open:
 ```text
 http://localhost:5177
 ```
+
+No dependency install is needed right now because the app only uses built-in Node.js APIs. You just need Node.js installed.
 
 ## Use it
 
