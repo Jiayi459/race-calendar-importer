@@ -1,0 +1,16 @@
+{
+  "name": "race-calendar-importer",
+  "version": "1.0.0",
+  "description": "Extract schedule URLs into editable Apple Calendar ICS files.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "calendar",
+    "ics",
+    "schedule",
+    "apple-calendar"
+  ],
+  "license": "MIT"
+}
