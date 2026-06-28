@@ -64,6 +64,10 @@ function readRows() {
     const start = fromLocalInputValue(row.querySelector(".start-input").value);
     const end = fromLocalInputValue(row.querySelector(".end-input").value);
     return {
+      uid: row.dataset.uid || "",
+      url: row.dataset.url || "",
+      description: row.dataset.description || "",
+      source: row.dataset.source || "",
       include: row.querySelector(".include-input").checked,
       title: row.querySelector(".title-input").value.trim(),
       start,
@@ -92,6 +96,10 @@ function addEventRow(event = {}) {
 
   const row = rowTemplate.content.firstElementChild.cloneNode(true);
   row.dataset.eventRow = "true";
+  row.dataset.uid = event.uid || event.id || "";
+  row.dataset.url = event.url || "";
+  row.dataset.description = event.description || "";
+  row.dataset.source = event.source || "";
   row.querySelector(".title-input").value = event.title || "";
   row.querySelector(".start-input").value = toLocalInputValue(event.start);
 
@@ -154,6 +162,10 @@ function serializeIcsLines(lines) {
 }
 
 function makeUid(event, index) {
+  if (event.uid) {
+    return event.uid.includes("@") ? event.uid : `${event.uid}@race-calendar-importer.local`;
+  }
+
   const key = `${event.title}-${event.start?.toISOString()}-${event.location}-${index}`;
   let hash = 0;
   for (let index = 0; index < key.length; index += 1) {
@@ -195,8 +207,15 @@ function buildIcs() {
 
     lines.push(`SUMMARY:${escapeIcsText(event.title)}`);
     if (event.location) lines.push(`LOCATION:${escapeIcsText(event.location)}`);
-    if (currentSourceUrl) lines.push(`URL:${escapeIcsText(currentSourceUrl)}`);
-    lines.push(`DESCRIPTION:${escapeIcsText(`Imported from Race Calendar Importer${currentSourceUrl ? `\n${currentSourceUrl}` : ""}`)}`);
+    const eventUrl = event.url || currentSourceUrl;
+    if (eventUrl) lines.push(`URL:${escapeIcsText(eventUrl)}`);
+    const description = [
+      event.description,
+      `Imported from Race Calendar Importer${currentSourceUrl ? `\n${currentSourceUrl}` : ""}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    lines.push(`DESCRIPTION:${escapeIcsText(description)}`);
 
     if (reminder !== null) {
       lines.push("BEGIN:VALARM");

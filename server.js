@@ -133,6 +133,7 @@ function mapFifaMatchToEvent(match, sourceUrl) {
   const matchUrl = `https://www.fifa.com/en/match-centre/match/${match.IdCompetition}/${match.IdSeason}/${match.IdStage}/${match.IdMatch}`;
 
   return {
+    uid: `fifa-${match.IdCompetition}-${match.IdSeason}-${match.IdStage}-${match.IdMatch}@race-calendar-importer.local`,
     title: `FIFA World Cup: ${home} vs ${away}`,
     start,
     end: new Date(new Date(start).getTime() + 2 * 60 * 60 * 1000).toISOString(),
@@ -198,6 +199,7 @@ function mapWnbaGameToEvent(game, sourceUrl) {
     .filter(Boolean);
 
   return {
+    uid: game.gameId ? `wnba-${game.gameId}@race-calendar-importer.local` : "",
     title: `WNBA: ${away} at ${home}`,
     start,
     end: new Date(new Date(start).getTime() + 2 * 60 * 60 * 1000).toISOString(),
