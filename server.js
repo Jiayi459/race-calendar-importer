@@ -109,6 +109,10 @@ function isWnbaScheduleUrl(url) {
   return /(^|\.)wnba\.com$/i.test(url.hostname) && /^\/schedule\/?$/i.test(url.pathname);
 }
 
+function isPremierLeagueMatchesUrl(url) {
+  return /(^|\.)premierleague\.com$/i.test(url.hostname) && /\/matches\/premier-league\//i.test(url.pathname);
+}
+
 function getFifaTeamName(team, placeholder) {
   return (
     pickLocalizedName(team?.TeamName) ||
@@ -235,6 +239,79 @@ async function collectWnbaEvents(parsedTarget) {
     .flatMap((dateGroup) => dateGroup.games || [])
     .map((game) => mapWnbaGameToEvent(game, parsedTarget.href))
     .filter(Boolean);
+}
+
+function getPremierLeagueSeasonId(parsedTarget) {
+  const seasonMatch = parsedTarget.pathname.match(/\/premier-league\/(\d{4})-\d{2}/i);
+  return seasonMatch?.[1] || String(new Date().getFullYear());
+}
+
+function parsePremierLeagueKickoff(value, timezone) {
+  if (!value) return "";
+  const normalized = String(value).trim().replace(" ", "T");
+  const timezoneOffset = String(timezone || "").toUpperCase() === "BST" ? "+01:00" : "+00:00";
+  return toIsoDate(`${normalized}${timezoneOffset}`);
+}
+
+function getPremierLeagueTeamName(team) {
+  return team?.name || team?.shortName || "TBD";
+}
+
+function mapPremierLeagueMatchToEvent(match, sourceUrl, matchweek) {
+  const start = parsePremierLeagueKickoff(match.kickoff, match.kickoffTimezone);
+  if (!start) return null;
+
+  const away = getPremierLeagueTeamName(match.awayTeam);
+  const home = getPremierLeagueTeamName(match.homeTeam);
+  const matchUrl = match.matchId
+    ? `https://www.premierleague.com/en/match/${match.matchId}`
+    : sourceUrl;
+
+  return {
+    uid: match.matchId ? `premier-league-${match.matchId}@race-calendar-importer.local` : "",
+    title: `Premier League: ${away} at ${home}`,
+    start,
+    end: new Date(new Date(start).getTime() + 2 * 60 * 60 * 1000).toISOString(),
+    location: stripTags(match.ground || ""),
+    description: [
+      matchweek ? `Matchweek ${matchweek}` : "",
+      match.competition,
+      match.period,
+      match.resultType,
+      match.matchId ? `Match ID: ${match.matchId}` : "",
+      `Source: ${sourceUrl}`,
+    ]
+      .filter(Boolean)
+      .join(" | "),
+    url: matchUrl,
+    source: "premier-league-api",
+  };
+}
+
+async function collectPremierLeagueEvents(parsedTarget) {
+  const seasonId = getPremierLeagueSeasonId(parsedTarget);
+  const matchweekIds = Array.from({ length: 38 }, (_, index) => index + 1);
+  const groups = await Promise.all(
+    matchweekIds.map(async (matchweek) => {
+      const apiUrl = new URL(
+        `https://sdp-prem-prod.premier-league-prod.pulselive.com/api/v1/competitions/8/seasons/${seasonId}/matchweeks/${matchweek}/matches`
+      );
+
+      try {
+        const data = await fetchJson(apiUrl, {
+          accept: "application/json",
+          referer: parsedTarget.href,
+        });
+        return (data.data || [])
+          .map((match) => mapPremierLeagueMatchToEvent(match, parsedTarget.href, matchweek))
+          .filter(Boolean);
+      } catch {
+        return [];
+      }
+    })
+  );
+
+  return groups.flat();
 }
 
 function eventFromSchema(rawEvent, sourceUrl) {
@@ -496,6 +573,17 @@ async function extractEvents(req, res) {
       const events = dedupeEvents(await collectWnbaEvents(parsedTarget));
       sendJson(res, 200, {
         pageTitle: `WNBA ${parsedTarget.searchParams.get("season") || ""} Schedule`.trim(),
+        sourceUrl: parsedTarget.href,
+        events,
+      });
+      return;
+    }
+
+    if (isPremierLeagueMatchesUrl(parsedTarget)) {
+      const seasonId = getPremierLeagueSeasonId(parsedTarget);
+      const events = dedupeEvents(await collectPremierLeagueEvents(parsedTarget));
+      sendJson(res, 200, {
+        pageTitle: `Premier League ${seasonId}/${String(Number(seasonId) + 1).slice(2)} Fixtures`,
         sourceUrl: parsedTarget.href,
         events,
       });

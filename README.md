@@ -43,6 +43,7 @@ The importer looks for:
 
 - FIFA World Cup 2026 fixtures via FIFA's public match API
 - WNBA schedule pages via WNBA's public schedule API
+- Premier League matchweek URLs via Premier League's public matchweek API, expanded to the full season
 - JSON-LD `schema.org/Event` data
 - embedded Next.js event-like JSON
 - HTML table rows with dates
